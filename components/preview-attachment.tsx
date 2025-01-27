@@ -15,18 +15,18 @@ export const PreviewAttachment = ({
   const [isLoading, setIsLoading] = useState(true);
 
   return (
-    <div className="h-28 flex flex-col gap-2">
+    <div className="flex flex-col">
       <div className="size-20 relative">
-        {contentType === 'application/pdf' ? (
+        {contentType?.includes('pdf') ? (
           <>
-            <object
-              data={url}
-              type="application/pdf"
+            <iframe
+              src={`${url}#toolbar=0&view=FitH`}
               className="size-20"
               onLoad={() => setIsLoading(false)}
+              style={{ border: 'none' }}
             >
               <FileIcon size={24} />
-            </object>
+            </iframe>
             {(isUploading || isLoading) && (
               <div className="absolute inset-0 flex items-center justify-center bg-muted z-10">
                 <div className="animate-spin text-zinc-500">
@@ -64,7 +64,7 @@ export const PreviewAttachment = ({
           </button>
         )}
       </div>
-      <div className="text-xs text-zinc-500 max-w-16 truncate">{name}</div>
+      <div className="text-xs text-zinc-500 max-w-16 truncate mt-1">{name}</div>
     </div>
   );
 };

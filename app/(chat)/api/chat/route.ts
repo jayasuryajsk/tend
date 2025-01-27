@@ -1,10 +1,12 @@
 import {
   type Message,
   type Attachment,
+  type CoreTool,
+  type DataStreamWriter,
   convertToCoreMessages,
   createDataStreamResponse,
-  streamObject,
   streamText,
+  tool,
 } from 'ai';
 import { z } from 'zod';
 
@@ -31,6 +33,7 @@ import {
   getMostRecentUserMessage,
   sanitizeResponseMessages,
 } from '@/lib/utils';
+import type { Session } from 'next-auth';
 
 import { generateTitleFromUserMessage } from '../../actions';
 
@@ -52,11 +55,99 @@ const weatherTools: AllowedTools[] = ['getWeather'];
 
 const allTools: AllowedTools[] = [...blocksTools, ...weatherTools];
 
-interface MessageContent {
-  type: 'text' | 'attachments';
-  text?: string;
-  attachments?: Attachment[];
+interface ToolContext {
+  session: Session;
+  dataStream: DataStreamWriter;
+  model: { id: string; apiIdentifier: string };
 }
+
+const getWeather = tool({
+  description: 'Get the current weather at a location',
+  parameters: z.object({
+    latitude: z.number(),
+    longitude: z.number(),
+  }),
+  execute: async ({ latitude, longitude }) => {
+    const response = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&hourly=temperature_2m&daily=sunrise,sunset&timezone=auto`,
+    );
+    const weatherData = await response.json();
+    return weatherData;
+  },
+});
+
+const createDocument = ({ session, dataStream, model }: ToolContext) =>
+  tool({
+    description: 'Create a document for writing or code creation activities',
+    parameters: z.object({
+      title: z.string(),
+      kind: z.enum(['text', 'code']),
+    }),
+    execute: async ({ title, kind }) => {
+      const id = generateUUID();
+      if (!session.user?.id) {
+        throw new Error('User not authenticated');
+      }
+      await saveDocument({
+        id,
+        userId: session.user.id,
+        title,
+        content: '',
+        kind,
+      });
+      return { documentId: id };
+    },
+  });
+
+const updateDocument = ({ session, dataStream, model }: ToolContext) =>
+  tool({
+    description: 'Update an existing document',
+    parameters: z.object({
+      documentId: z.string(),
+      content: z.string(),
+    }),
+    execute: async ({ documentId, content }) => {
+      if (!session.user?.id) {
+        throw new Error('User not authenticated');
+      }
+      const document = await getDocumentById({ id: documentId });
+      if (!document || document.userId !== session.user.id) {
+        throw new Error('Document not found');
+      }
+      await saveDocument({
+        id: documentId,
+        userId: session.user.id,
+        title: document.title,
+        content,
+        kind: document.kind,
+      });
+      return { success: true };
+    },
+  });
+
+const requestSuggestions = ({ session, dataStream, model }: ToolContext) =>
+  tool({
+    description: 'Request suggestions for a document',
+    parameters: z.object({
+      query: z.string(),
+    }),
+    execute: async ({ query }) => {
+      if (!session.user?.id) {
+        throw new Error('User not authenticated');
+      }
+      const userId = session.user.id;
+      const suggestions: Array<Omit<Suggestion, 'userId' | 'createdAt' | 'documentCreatedAt'>> = [];
+      await saveSuggestions({
+        suggestions: suggestions.map((suggestion) => ({
+          ...suggestion,
+          userId,
+          createdAt: new Date(),
+          documentCreatedAt: new Date(),
+        })),
+      });
+      return { suggestions };
+    },
+  });
 
 export async function POST(request: Request) {
   const {
@@ -94,32 +185,14 @@ export async function POST(request: Request) {
 
   const userMessageId = generateUUID();
 
-  // Save the message with attachments if present
-  const messageToSave = {
-    ...userMessage,
-    id: userMessageId,
-    createdAt: new Date(),
-    chatId: id,
-    content: [
-      { type: 'text' as const, text: typeof userMessage.content === 'string' ? userMessage.content : '' }
-    ] as MessageContent[],
-  };
-
-  // Add attachments if present
-  const attachments = (userMessage as any).experimental_attachments;
-  if (attachments) {
-    messageToSave.content.push({
-      type: 'attachments',
-      attachments
-    });
-  }
-
   await saveMessages({
-    messages: [messageToSave],
+    messages: [
+      { ...userMessage, id: userMessageId, createdAt: new Date(), chatId: id },
+    ],
   });
 
   return createDataStreamResponse({
-    execute: async (dataStream) => {
+    execute: (dataStream) => {
       dataStream.writeData({
         type: 'user-message-id',
         content: userMessageId,
@@ -127,12 +200,53 @@ export async function POST(request: Request) {
 
       const result = streamText({
         model: customModel(model.apiIdentifier),
-        messages: coreMessages,
         system: systemPrompt,
+        messages: coreMessages,
+        maxSteps: 5,
+        experimental_activeTools: allTools,
+        tools: {
+          getWeather,
+          createDocument: createDocument({ session, dataStream, model }),
+          updateDocument: updateDocument({ session, dataStream, model }),
+          requestSuggestions: requestSuggestions({
+            session,
+            dataStream,
+            model,
+          }),
+        },
+        onFinish: async ({ response }) => {
+          if (session.user?.id) {
+            try {
+              const responseMessagesWithoutIncompleteToolCalls =
+                sanitizeResponseMessages(response.messages);
+              await saveMessages({
+                messages: responseMessagesWithoutIncompleteToolCalls.map(
+                  (message) => {
+                    const messageId = generateUUID();
+                    if (message.role === 'assistant') {
+                      dataStream.writeMessageAnnotation({
+                        messageIdFromServer: messageId,
+                      });
+                    }
+                    return {
+                      id: messageId,
+                      chatId: id,
+                      role: message.role,
+                      content: message.content,
+                      createdAt: new Date(),
+                    };
+                  },
+                ),
+              });
+            } catch (error) {
+              console.error('Failed to save chat');
+            }
+          }
+        },
       });
 
       result.mergeIntoDataStream(dataStream);
-    }
+    },
   });
 }
 

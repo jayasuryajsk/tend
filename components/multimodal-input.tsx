@@ -211,7 +211,7 @@ function PureMultimodalInput({
       />
 
       {attachments.length > 0 && (
-        <div className="min-h-28 flex flex-row gap-2 flex-wrap items-start p-4 border-t">
+        <div className="min-h-28 flex flex-row gap-2 flex-wrap items-start p-4">
           {attachments.map((attachment) => (
             <PreviewAttachment
               key={attachment.name}

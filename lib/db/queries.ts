@@ -329,31 +329,20 @@ export async function updateChatVisiblityById({
   }
 }
 
-export async function updateChatTitle({
-  id,
+export async function updateChatTitleById({
+  chatId,
   title,
-  userId,
 }: {
-  id: string;
+  chatId: string;
   title: string;
-  userId: string;
 }) {
   try {
-    const [existingChat] = await db
-      .select()
-      .from(chat)
-      .where(and(eq(chat.id, id), eq(chat.userId, userId)));
-
-    if (!existingChat) {
-      throw new Error('Chat not found or unauthorized');
-    }
-
-    await db
+    return await db
       .update(chat)
       .set({ title })
-      .where(and(eq(chat.id, id), eq(chat.userId, userId)));
+      .where(eq(chat.id, chatId));
   } catch (error) {
-    console.error('Error updating chat title:', error);
+    console.error('Failed to update chat title in database');
     throw error;
   }
 }

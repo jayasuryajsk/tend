@@ -97,6 +97,7 @@ export function convertToUIMessages(
 
     let textContent = '';
     const toolInvocations: Array<ToolInvocation> = [];
+    const attachments: Array<{ url: string; name: string; contentType: string }> = [];
 
     if (typeof message.content === 'string') {
       textContent = message.content;
@@ -111,6 +112,13 @@ export function convertToUIMessages(
             toolName: content.toolName,
             args: content.args,
           });
+        } else if (content.type === 'file') {
+          const filename = content.data.split('/').pop() || '';
+          attachments.push({
+            url: content.data,
+            name: decodeURIComponent(filename),
+            contentType: content.mimeType,
+          });
         }
       }
     }
@@ -120,6 +128,7 @@ export function convertToUIMessages(
       role: message.role as Message['role'],
       content: textContent,
       toolInvocations,
+      experimental_attachments: attachments.length > 0 ? attachments : undefined,
     });
 
     return chatMessages;

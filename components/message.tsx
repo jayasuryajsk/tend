@@ -47,6 +47,7 @@ const PurePreviewMessage = ({
     <AnimatePresence>
       <motion.div
         className="w-full mx-auto max-w-3xl px-4 group/message"
+        style={{ border: 'none', borderTop: 'none', borderBottom: 'none' }}
         initial={{ y: 5, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         data-role={message.role}
@@ -68,9 +69,9 @@ const PurePreviewMessage = ({
             </div>
           )}
 
-          <div className="flex flex-col gap-2 w-full">
+          <div className="flex flex-col w-full">
             {message.experimental_attachments && (
-              <div className="flex flex-row justify-end gap-2">
+              <div className="flex flex-row justify-end">
                 {message.experimental_attachments.map((attachment) => (
                   <PreviewAttachment
                     key={attachment.url}
@@ -81,7 +82,7 @@ const PurePreviewMessage = ({
             )}
 
             {message.content && mode === 'view' && (
-              <div className="flex flex-row gap-2 items-start">
+              <div className="flex flex-row gap-2 items-start mt-2">
                 {message.role === 'user' && !isReadonly && (
                   <Tooltip>
                     <TooltipTrigger asChild>
