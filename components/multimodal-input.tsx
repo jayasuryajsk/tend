@@ -210,27 +210,17 @@ function PureMultimodalInput({
         tabIndex={-1}
       />
 
-      {(attachments.length > 0 || uploadQueue.length > 0) && (
-        <div className="flex flex-row gap-2 overflow-x-scroll items-end">
+      {attachments.length > 0 && (
+        <div className="min-h-28 flex flex-row gap-2 flex-wrap items-start p-4 border-t">
           {attachments.map((attachment) => (
-            <PreviewAttachment 
-              key={attachment.url} 
+            <PreviewAttachment
+              key={attachment.name}
               attachment={attachment}
               onDelete={() => {
-                setAttachments(prev => prev.filter(a => a.url !== attachment.url));
+                setAttachments((attachments) =>
+                  attachments.filter((a) => a.name !== attachment.name),
+                );
               }}
-            />
-          ))}
-
-          {uploadQueue.map((filename) => (
-            <PreviewAttachment
-              key={filename}
-              attachment={{
-                url: '',
-                name: filename,
-                contentType: '',
-              }}
-              isUploading={true}
             />
           ))}
         </div>

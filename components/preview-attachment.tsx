@@ -15,7 +15,7 @@ export const PreviewAttachment = ({
   const [isLoading, setIsLoading] = useState(true);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="h-28 flex flex-col gap-2">
       <div className="size-20 relative">
         {contentType === 'application/pdf' ? (
           <>
