@@ -1,24 +1,20 @@
-import { memo } from 'react';
+import { type Dispatch, type SetStateAction, memo, useState, useEffect, useRef, useCallback } from 'react';
 import { TerminalWindowIcon, LoaderIcon, CrossSmallIcon } from './icons';
 import { Button } from './ui/button';
-import {
-  Dispatch,
-  SetStateAction,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
 import { ConsoleOutput } from './block';
 import { cn } from '@/lib/utils';
 import { useBlockSelector } from '@/hooks/use-block';
+import cx from 'classnames';
 
 interface ConsoleProps {
   consoleOutputs: Array<ConsoleOutput>;
   setConsoleOutputs: Dispatch<SetStateAction<Array<ConsoleOutput>>>;
 }
 
-export const Console = memo(({ consoleOutputs, setConsoleOutputs }: ConsoleProps) => {
+export const Console = memo(function Console({
+  consoleOutputs,
+  setConsoleOutputs,
+}: ConsoleProps) {
   const [height, setHeight] = useState<number>(300);
   const [isResizing, setIsResizing] = useState(false);
   const consoleEndRef = useRef<HTMLDivElement>(null);

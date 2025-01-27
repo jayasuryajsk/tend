@@ -16,13 +16,13 @@ export const PreviewAttachment = ({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="w-20 h-16 aspect-video bg-muted rounded-md relative flex flex-col items-center justify-center overflow-hidden">
+      <div className="size-full relative">
         {contentType === 'application/pdf' ? (
           <>
             <object
               data={url}
               type="application/pdf"
-              className="w-full h-full"
+              className="size-full"
               onLoad={() => setIsLoading(false)}
             >
               <FileIcon size={32} />
@@ -36,7 +36,7 @@ export const PreviewAttachment = ({
             )}
           </>
         ) : (
-          <div className="flex items-center justify-center w-full h-full text-zinc-500">
+          <div className="flex items-center justify-center size-full text-zinc-500">
             <FileIcon size={32} />
           </div>
         )}

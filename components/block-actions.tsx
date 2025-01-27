@@ -15,37 +15,35 @@ interface BlockActionsProps {
   setConsoleOutputs: Dispatch<SetStateAction<Array<ConsoleOutput>>>;
 }
 
-export const BlockActions = memo(
-  ({ block, currentVersionIndex, handleVersionChange, isCurrentVersion, mode, setConsoleOutputs }: BlockActionsProps) => {
-    const [_, copyToClipboard] = useCopyToClipboard();
+export const BlockActions = memo(function BlockActions({ block, currentVersionIndex, handleVersionChange, isCurrentVersion, mode, setConsoleOutputs }: BlockActionsProps) {
+  const [_, copyToClipboard] = useCopyToClipboard();
 
-    const handleCopy = useCallback(() => {
-      if (!block) return;
+  const handleCopy = useCallback(() => {
+    if (!block) return;
 
-      if (block.kind === 'text' || block.kind === 'code') {
-        copyToClipboard(block.content);
-        toast.success('Copied to clipboard!');
-      }
-    }, [block, copyToClipboard]);
+    if (block.kind === 'text' || block.kind === 'code') {
+      copyToClipboard(block.content);
+      toast.success('Copied to clipboard!');
+    }
+  }, [block, copyToClipboard]);
 
-    return (
-      <div className="flex flex-row gap-1">
-        {block.kind === 'code' && (
-          <RunCodeButton
-            code={block.content}
-            consoleOutputs={[]}
-            setConsoleOutputs={setConsoleOutputs}
-          />
-        )}
-        <Button
-          variant="outline"
-          className="p-2 h-fit dark:hover:bg-zinc-700"
-          onClick={handleCopy}
-          disabled={block.status === 'streaming'}
-        >
-          <CopyIcon />
-        </Button>
-      </div>
-    );
-  },
-);
+  return (
+    <div className="flex flex-row gap-1">
+      {block.kind === 'code' && (
+        <RunCodeButton
+          code={block.content}
+          consoleOutputs={[]}
+          setConsoleOutputs={setConsoleOutputs}
+        />
+      )}
+      <Button
+        variant="outline"
+        className="p-2 h-fit dark:hover:bg-zinc-700"
+        onClick={handleCopy}
+        disabled={block.status === 'streaming'}
+      >
+        <CopyIcon />
+      </Button>
+    </div>
+  );
+});
