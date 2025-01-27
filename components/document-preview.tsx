@@ -9,7 +9,7 @@ import {
   useRef,
 } from 'react';
 import { BlockKind, UIBlock } from './block';
-import { FileIcon, FullscreenIcon, ImageIcon, LoaderIcon } from './icons';
+import { FileIcon, FullscreenIcon, LoaderIcon } from './icons';
 import { cn, fetcher } from '@/lib/utils';
 import { Document } from '@/lib/db/schema';
 import { InlineDocumentSkeleton } from './document-skeleton';
@@ -19,7 +19,6 @@ import { DocumentToolCall, DocumentToolResult } from './document';
 import { CodeEditor } from './code-editor';
 import { useBlock } from '@/hooks/use-block';
 import equal from 'fast-deep-equal';
-import { ImageEditor } from './image-editor';
 
 interface DocumentPreviewProps {
   isReadonly: boolean;
@@ -123,15 +122,17 @@ const LoadingSkeleton = ({ blockKind }: { blockKind: BlockKind }) => (
         <FullscreenIcon />
       </div>
     </div>
-    {blockKind === 'image' ? (
-      <div className="overflow-y-scroll border rounded-b-2xl bg-muted border-t-0 dark:border-zinc-700">
-        <div className="animate-pulse h-[257px] bg-muted-foreground/20 w-full" />
+    {blockKind === 'text' ? (
+      <div className="flex flex-col gap-4">
+        <div className="h-2 w-3/4 bg-gray-200 rounded animate-pulse" />
+        <div className="h-2 w-1/2 bg-gray-200 rounded animate-pulse" />
       </div>
-    ) : (
-      <div className="overflow-y-scroll border rounded-b-2xl p-8 pt-4 bg-muted border-t-0 dark:border-zinc-700">
-        <InlineDocumentSkeleton />
+    ) : blockKind === 'code' ? (
+      <div className="flex flex-col gap-4">
+        <div className="h-2 w-3/4 bg-gray-200 rounded animate-pulse" />
+        <div className="h-2 w-1/2 bg-gray-200 rounded animate-pulse" />
       </div>
-    )}
+    ) : null}
   </div>
 );
 
@@ -207,8 +208,6 @@ const PureDocumentHeader = ({
           <div className="animate-spin">
             <LoaderIcon />
           </div>
-        ) : kind === 'image' ? (
-          <ImageIcon />
         ) : (
           <FileIcon />
         )}
@@ -251,20 +250,7 @@ const DocumentContent = ({ document }: { document: Document }) => {
       {document.kind === 'text' ? (
         <Editor {...commonProps} />
       ) : document.kind === 'code' ? (
-        <div className="flex flex-1 relative w-full">
-          <div className="absolute inset-0">
-            <CodeEditor {...commonProps} />
-          </div>
-        </div>
-      ) : document.kind === 'image' ? (
-        <ImageEditor
-          title={document.title}
-          content={document.content ?? ''}
-          isCurrentVersion={true}
-          currentVersionIndex={0}
-          status={block.status}
-          isInline={true}
-        />
+        <CodeEditor {...commonProps} />
       ) : null}
     </div>
   );

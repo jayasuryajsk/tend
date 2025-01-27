@@ -3,7 +3,7 @@
 import { BlockKind } from './block';
 
 export const DocumentSkeleton = ({ blockKind }: { blockKind: BlockKind }) => {
-  return blockKind === 'image' ? (
+  return blockKind === 'code' ? (
     <div className="flex flex-col gap-4 w-full justify-center items-center h-[calc(100dvh-60px)]">
       <div className="animate-pulse rounded-lg bg-muted-foreground/20 size-96" />
     </div>
@@ -20,16 +20,17 @@ export const DocumentSkeleton = ({ blockKind }: { blockKind: BlockKind }) => {
   );
 };
 
-export const InlineDocumentSkeleton = () => {
-  return (
-    <div className="flex flex-col gap-4 w-full">
-      <div className="animate-pulse rounded-lg h-4 bg-muted-foreground/20 w-48" />
-      <div className="animate-pulse rounded-lg h-4 bg-muted-foreground/20 w-3/4" />
-      <div className="animate-pulse rounded-lg h-4 bg-muted-foreground/20 w-1/2" />
-      <div className="animate-pulse rounded-lg h-4 bg-muted-foreground/20 w-64" />
-      <div className="animate-pulse rounded-lg h-4 bg-muted-foreground/20 w-40" />
-      <div className="animate-pulse rounded-lg h-4 bg-muted-foreground/20 w-36" />
-      <div className="animate-pulse rounded-lg h-4 bg-muted-foreground/20 w-64" />
+export const InlineDocumentSkeleton = ({ blockKind }: { blockKind?: BlockKind }) => {
+  if (!blockKind) return null;
+  return blockKind === 'text' ? (
+    <div className="flex flex-col gap-4">
+      <div className="h-2 w-3/4 bg-gray-200 rounded animate-pulse" />
+      <div className="h-2 w-1/2 bg-gray-200 rounded animate-pulse" />
     </div>
-  );
+  ) : blockKind === 'code' ? (
+    <div className="flex flex-col gap-4">
+      <div className="h-2 w-3/4 bg-gray-200 rounded animate-pulse" />
+      <div className="h-2 w-1/2 bg-gray-200 rounded animate-pulse" />
+    </div>
+  ) : null;
 };

@@ -1,6 +1,5 @@
 import {
   DataStreamWriter,
-  experimental_generateImage,
   smoothStream,
   streamObject,
   streamText,
@@ -10,7 +9,7 @@ import { Model } from '../models';
 import { Session } from 'next-auth';
 import { z } from 'zod';
 import { getDocumentById, saveDocument } from '@/lib/db/queries';
-import { customModel, imageGenerationModel } from '..';
+import { customModel } from '..';
 import { updateDocumentPrompt } from '../prompts';
 
 interface UpdateDocumentProps {
@@ -25,28 +24,38 @@ export const updateDocument = ({
   dataStream,
 }: UpdateDocumentProps) =>
   tool({
-    description: 'Update a document with the given description.',
+    description: 'Update an existing document with new content.',
     parameters: z.object({
-      id: z.string().describe('The ID of the document to update'),
-      description: z
-        .string()
-        .describe('The description of changes that need to be made'),
+      id: z.string(),
+      description: z.string(),
     }),
     execute: async ({ id, description }) => {
       const document = await getDocumentById({ id });
-
       if (!document) {
-        return {
-          error: 'Document not found',
-        };
+        throw new Error('Document not found');
       }
-
-      const { content: currentContent } = document;
+      
+      const currentContent = document.content;
       let draftText = '';
 
       dataStream.writeData({
-        type: 'clear',
+        type: 'id',
+        content: id,
+      });
+
+      dataStream.writeData({
+        type: 'title',
         content: document.title,
+      });
+
+      dataStream.writeData({
+        type: 'kind',
+        content: document.kind,
+      });
+
+      dataStream.writeData({
+        type: 'clear',
+        content: '',
       });
 
       if (document.kind === 'text') {
@@ -55,14 +64,6 @@ export const updateDocument = ({
           system: updateDocumentPrompt(currentContent, 'text'),
           experimental_transform: smoothStream({ chunking: 'word' }),
           prompt: description,
-          experimental_providerMetadata: {
-            openai: {
-              prediction: {
-                type: 'content',
-                content: currentContent,
-              },
-            },
-          },
         });
 
         for await (const delta of fullStream) {
@@ -109,29 +110,14 @@ export const updateDocument = ({
         }
 
         dataStream.writeData({ type: 'finish', content: '' });
-      } else if (document.kind === 'image') {
-        const { image } = await experimental_generateImage({
-          model: imageGenerationModel,
-          prompt: description,
-          n: 1,
-        });
-
-        draftText = image.base64;
-
-        dataStream.writeData({
-          type: 'image-delta',
-          content: image.base64,
-        });
-
-        dataStream.writeData({ type: 'finish', content: '' });
       }
 
       if (session.user?.id) {
         await saveDocument({
           id,
           title: document.title,
-          content: draftText,
           kind: document.kind,
+          content: draftText,
           userId: session.user.id,
         });
       }
@@ -140,7 +126,7 @@ export const updateDocument = ({
         id,
         title: document.title,
         kind: document.kind,
-        content: 'The document has been updated successfully.',
+        content: 'The document was updated and is now visible to the user.',
       };
     },
   });

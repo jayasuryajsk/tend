@@ -34,9 +34,8 @@ import { Console } from './console';
 import { useSidebar } from './ui/sidebar';
 import { useBlock } from '@/hooks/use-block';
 import equal from 'fast-deep-equal';
-import { ImageEditor } from './image-editor';
 
-export type BlockKind = 'text' | 'code' | 'image';
+export type BlockKind = 'text' | 'code';
 
 export interface UIBlock {
   title: string;
@@ -54,7 +53,7 @@ export interface UIBlock {
 }
 
 export interface ConsoleOutputContent {
-  type: 'text' | 'image';
+  type: 'text';
   value: string;
 }
 
@@ -513,23 +512,6 @@ function PureBlock({
                       newContent={getDocumentContentById(currentVersionIndex)}
                     />
                   )
-                ) : block.kind === 'image' ? (
-                  <ImageEditor
-                    title={block.title}
-                    content={
-                      isCurrentVersion
-                        ? block.content
-                        : getDocumentContentById(currentVersionIndex)
-                    }
-                    isCurrentVersion={isCurrentVersion}
-                    currentVersionIndex={currentVersionIndex}
-                    status={block.status}
-                    isInline={false}
-                  />
-                ) : null}
-
-                {suggestions && suggestions.length > 0 ? (
-                  <div className="md:hidden h-dvh w-12 shrink-0" />
                 ) : null}
 
                 <AnimatePresence>

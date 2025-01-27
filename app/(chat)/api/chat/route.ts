@@ -1,21 +1,31 @@
 import {
   type Message,
+  type Attachment,
   convertToCoreMessages,
   createDataStreamResponse,
-  smoothStream,
+  streamObject,
   streamText,
 } from 'ai';
+import { z } from 'zod';
 
 import { auth } from '@/app/(auth)/auth';
 import { customModel } from '@/lib/ai';
 import { models } from '@/lib/ai/models';
-import { systemPrompt } from '@/lib/ai/prompts';
+import {
+  codePrompt,
+  systemPrompt,
+  updateDocumentPrompt,
+} from '@/lib/ai/prompts';
 import {
   deleteChatById,
   getChatById,
+  getDocumentById,
   saveChat,
+  saveDocument,
   saveMessages,
+  saveSuggestions,
 } from '@/lib/db/queries';
+import type { Suggestion } from '@/lib/db/schema';
 import {
   generateUUID,
   getMostRecentUserMessage,
@@ -23,10 +33,6 @@ import {
 } from '@/lib/utils';
 
 import { generateTitleFromUserMessage } from '../../actions';
-import { createDocument } from '@/lib/ai/tools/create-document';
-import { updateDocument } from '@/lib/ai/tools/update-document';
-import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
-import { getWeather } from '@/lib/ai/tools/get-weather';
 
 export const maxDuration = 60;
 
@@ -43,7 +49,14 @@ const blocksTools: AllowedTools[] = [
 ];
 
 const weatherTools: AllowedTools[] = ['getWeather'];
+
 const allTools: AllowedTools[] = [...blocksTools, ...weatherTools];
+
+interface MessageContent {
+  type: 'text' | 'attachments';
+  text?: string;
+  attachments?: Attachment[];
+}
 
 export async function POST(request: Request) {
   const {
@@ -81,14 +94,32 @@ export async function POST(request: Request) {
 
   const userMessageId = generateUUID();
 
+  // Save the message with attachments if present
+  const messageToSave = {
+    ...userMessage,
+    id: userMessageId,
+    createdAt: new Date(),
+    chatId: id,
+    content: [
+      { type: 'text' as const, text: typeof userMessage.content === 'string' ? userMessage.content : '' }
+    ] as MessageContent[],
+  };
+
+  // Add attachments if present
+  const attachments = (userMessage as any).experimental_attachments;
+  if (attachments) {
+    messageToSave.content.push({
+      type: 'attachments',
+      attachments
+    });
+  }
+
   await saveMessages({
-    messages: [
-      { ...userMessage, id: userMessageId, createdAt: new Date(), chatId: id },
-    ],
+    messages: [messageToSave],
   });
 
   return createDataStreamResponse({
-    execute: (dataStream) => {
+    execute: async (dataStream) => {
       dataStream.writeData({
         type: 'user-message-id',
         content: userMessageId,
@@ -96,61 +127,12 @@ export async function POST(request: Request) {
 
       const result = streamText({
         model: customModel(model.apiIdentifier),
-        system: systemPrompt,
         messages: coreMessages,
-        maxSteps: 5,
-        experimental_activeTools: allTools,
-        experimental_transform: smoothStream({ chunking: 'word' }),
-        tools: {
-          getWeather,
-          createDocument: createDocument({ session, dataStream, model }),
-          updateDocument: updateDocument({ session, dataStream, model }),
-          requestSuggestions: requestSuggestions({
-            session,
-            dataStream,
-            model,
-          }),
-        },
-        onFinish: async ({ response }) => {
-          if (session.user?.id) {
-            try {
-              const responseMessagesWithoutIncompleteToolCalls =
-                sanitizeResponseMessages(response.messages);
-
-              await saveMessages({
-                messages: responseMessagesWithoutIncompleteToolCalls.map(
-                  (message) => {
-                    const messageId = generateUUID();
-
-                    if (message.role === 'assistant') {
-                      dataStream.writeMessageAnnotation({
-                        messageIdFromServer: messageId,
-                      });
-                    }
-
-                    return {
-                      id: messageId,
-                      chatId: id,
-                      role: message.role,
-                      content: message.content,
-                      createdAt: new Date(),
-                    };
-                  },
-                ),
-              });
-            } catch (error) {
-              console.error('Failed to save chat');
-            }
-          }
-        },
-        experimental_telemetry: {
-          isEnabled: true,
-          functionId: 'stream-text',
-        },
+        system: systemPrompt,
       });
 
       result.mergeIntoDataStream(dataStream);
-    },
+    }
   });
 }
 

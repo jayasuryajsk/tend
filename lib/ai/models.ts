@@ -1,3 +1,5 @@
+import { MODEL_DESCRIPTIONS, MODEL_IDS, MODEL_LABELS, MODEL_CAPABILITIES, DEFAULT_MODEL_ID } from './constants';
+
 // Define your models here.
 
 export interface Model {
@@ -5,21 +7,20 @@ export interface Model {
   label: string;
   apiIdentifier: string;
   description: string;
+  capabilities?: {
+    multimodal: boolean;
+    fileTypes: readonly string[];
+  };
 }
 
 export const models: Array<Model> = [
   {
-    id: 'gpt-4o-mini',
-    label: 'GPT 4o mini',
-    apiIdentifier: 'gpt-4o-mini',
-    description: 'Small model for fast, lightweight tasks',
-  },
-  {
-    id: 'gpt-4o',
-    label: 'GPT 4o',
-    apiIdentifier: 'gpt-4o',
-    description: 'For complex, multi-step tasks',
+    id: MODEL_IDS.GEMINI_FLASH,
+    label: MODEL_LABELS[MODEL_IDS.GEMINI_FLASH],
+    apiIdentifier: MODEL_IDS.GEMINI_FLASH,
+    description: MODEL_DESCRIPTIONS[MODEL_IDS.GEMINI_FLASH],
+    capabilities: MODEL_CAPABILITIES[MODEL_IDS.GEMINI_FLASH],
   },
 ] as const;
 
-export const DEFAULT_MODEL_NAME: string = 'gpt-4o-mini';
+export const DEFAULT_MODEL_NAME = DEFAULT_MODEL_ID;

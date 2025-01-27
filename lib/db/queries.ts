@@ -328,3 +328,32 @@ export async function updateChatVisiblityById({
     throw error;
   }
 }
+
+export async function updateChatTitle({
+  id,
+  title,
+  userId,
+}: {
+  id: string;
+  title: string;
+  userId: string;
+}) {
+  try {
+    const [existingChat] = await db
+      .select()
+      .from(chat)
+      .where(and(eq(chat.id, id), eq(chat.userId, userId)));
+
+    if (!existingChat) {
+      throw new Error('Chat not found or unauthorized');
+    }
+
+    await db
+      .update(chat)
+      .set({ title })
+      .where(and(eq(chat.id, id), eq(chat.userId, userId)));
+  } catch (error) {
+    console.error('Error updating chat title:', error);
+    throw error;
+  }
+}

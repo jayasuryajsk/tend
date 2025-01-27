@@ -38,6 +38,8 @@ import {
 } from './icons';
 import { BlockKind } from './block';
 
+type ToolType = 'final-polish' | 'request-suggestions' | 'adjust-reading-level' | 'code-review' | 'add-comments' | 'add-logs';
+
 type ToolProps = {
   type:
     | 'final-polish'
@@ -283,50 +285,41 @@ const ReadingLevelSelector = ({
   );
 };
 
-const toolsByBlockKind: Record<
-  BlockKind,
-  Array<{
-    type:
-      | 'final-polish'
-      | 'request-suggestions'
-      | 'adjust-reading-level'
-      | 'code-review'
-      | 'add-comments'
-      | 'add-logs';
-    description: string;
-    icon: JSX.Element;
-  }>
-> = {
+const tools: Record<BlockKind, { type: ToolType; description: string; icon: JSX.Element }[]> = {
   text: [
     {
       type: 'final-polish',
-      description: 'Add final polish',
+      description: 'Polish and improve the writing',
+      icon: <SparklesIcon />,
+    },
+    {
+      type: 'request-suggestions',
+      description: 'Get suggestions for improvements',
       icon: <PenIcon />,
     },
     {
       type: 'adjust-reading-level',
-      description: 'Adjust reading level',
+      description: 'Adjust the reading level',
       icon: <SummarizeIcon />,
-    },
-    {
-      type: 'request-suggestions',
-      description: 'Request suggestions',
-      icon: <MessageIcon />,
     },
   ],
   code: [
     {
-      type: 'add-comments',
-      description: 'Add comments',
+      type: 'code-review',
+      description: 'Review code for improvements',
       icon: <CodeIcon />,
     },
     {
+      type: 'add-comments',
+      description: 'Add comments to explain the code',
+      icon: <MessageIcon />,
+    },
+    {
       type: 'add-logs',
-      description: 'Add logs',
+      description: 'Add logs to help debug',
       icon: <LogsIcon />,
     },
-  ],
-  image: [],
+  ]
 };
 
 export const Tools = ({
@@ -349,7 +342,7 @@ export const Tools = ({
   setIsToolbarVisible: Dispatch<SetStateAction<boolean>>;
   blockKind: BlockKind;
 }) => {
-  const [primaryTool, ...secondaryTools] = toolsByBlockKind[blockKind];
+  const [primaryTool, ...secondaryTools] = tools[blockKind];
 
   return (
     <motion.div
@@ -451,7 +444,7 @@ const PureToolbar = ({
     }
   }, [isLoading, setIsToolbarVisible]);
 
-  if (toolsByBlockKind[blockKind].length === 0) {
+  if (tools[blockKind].length === 0) {
     return null;
   }
 
@@ -473,7 +466,7 @@ const PureToolbar = ({
               : {
                   opacity: 1,
                   y: 0,
-                  height: toolsByBlockKind[blockKind].length * 50,
+                  height: tools[blockKind].length * 50,
                   transition: { delay: 0 },
                   scale: 1,
                 }

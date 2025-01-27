@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { TerminalWindowIcon, LoaderIcon, CrossSmallIcon } from './icons';
 import { Button } from './ui/button';
 import {
@@ -17,7 +18,7 @@ interface ConsoleProps {
   setConsoleOutputs: Dispatch<SetStateAction<Array<ConsoleOutput>>>;
 }
 
-export function Console({ consoleOutputs, setConsoleOutputs }: ConsoleProps) {
+export const Console = memo(({ consoleOutputs, setConsoleOutputs }: ConsoleProps) => {
   const [height, setHeight] = useState<number>(300);
   const [isResizing, setIsResizing] = useState(false);
   const consoleEndRef = useRef<HTMLDivElement>(null);
@@ -103,60 +104,35 @@ export function Console({ consoleOutputs, setConsoleOutputs }: ConsoleProps) {
         </div>
 
         <div>
-          {consoleOutputs.map((consoleOutput, index) => (
-            <div
-              key={consoleOutput.id}
-              className="px-4 py-2 flex flex-row text-sm border-b dark:border-zinc-700 border-zinc-200 dark:bg-zinc-900 bg-zinc-50 font-mono"
-            >
-              <div
-                className={cn('w-12 shrink-0', {
-                  'text-muted-foreground': [
-                    'in_progress',
-                    'loading_packages',
-                  ].includes(consoleOutput.status),
-                  'text-emerald-500': consoleOutput.status === 'completed',
-                  'text-red-400': consoleOutput.status === 'failed',
-                })}
-              >
-                [{index + 1}]
-              </div>
-              {['in_progress', 'loading_packages'].includes(
-                consoleOutput.status,
-              ) ? (
-                <div className="flex flex-row gap-2">
-                  <div className="animate-spin size-fit self-center mb-auto mt-0.5">
+          {consoleOutputs.map((output) => (
+            <div key={output.id} className="flex flex-col gap-2">
+              {output.status === 'in_progress' ? (
+                <div className="flex flex-row gap-2 items-center">
+                  <div className="animate-spin">
                     <LoaderIcon />
                   </div>
-                  <div className="text-muted-foreground">
-                    {consoleOutput.status === 'in_progress'
-                      ? 'Initializing...'
-                      : consoleOutput.status === 'loading_packages'
-                        ? consoleOutput.contents.map((content) =>
-                            content.type === 'text' ? content.value : null,
-                          )
-                        : null}
+                  <div>Running...</div>
+                </div>
+              ) : output.status === 'loading_packages' ? (
+                <div className="flex flex-row gap-2 items-center">
+                  <div className="animate-spin">
+                    <LoaderIcon />
                   </div>
+                  <div>Loading packages...</div>
+                </div>
+              ) : output.status === 'failed' ? (
+                <div className="text-red-500">
+                  {output.contents.map((content, index) => (
+                    <div key={index}>{content.value}</div>
+                  ))}
                 </div>
               ) : (
-                <div className="dark:text-zinc-50 text-zinc-900 w-full flex flex-col gap-2 overflow-x-scroll">
-                  {consoleOutput.contents.map((content, index) =>
-                    content.type === 'image' ? (
-                      <picture key={`${consoleOutput.id}-${index}`}>
-                        <img
-                          src={content.value}
-                          alt="output"
-                          className="rounded-md max-w-[600px] w-full"
-                        />
-                      </picture>
-                    ) : (
-                      <div
-                        key={`${consoleOutput.id}-${index}`}
-                        className="whitespace-pre-line break-words w-full"
-                      >
-                        {content.value}
-                      </div>
-                    ),
-                  )}
+                <div className="flex flex-col gap-2">
+                  {output.contents.map((content, index) => (
+                    <div key={index} className="whitespace-pre-wrap font-mono">
+                      {content.value}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -166,4 +142,4 @@ export function Console({ consoleOutputs, setConsoleOutputs }: ConsoleProps) {
       </div>
     </>
   ) : null;
-}
+});

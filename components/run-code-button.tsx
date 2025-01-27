@@ -8,70 +8,35 @@ import {
   useEffect,
   memo,
 } from 'react';
-import type { ConsoleOutput, ConsoleOutputContent, UIBlock } from './block';
+import type { ConsoleOutput, ConsoleOutputContent } from './block';
 import { Button } from './ui/button';
 import { PlayIcon } from './icons';
-import { useBlockSelector } from '@/hooks/use-block';
 
 const OUTPUT_HANDLERS = {
-  matplotlib: `
-    import io
-    import base64
-    from matplotlib import pyplot as plt
-
-    # Clear any existing plots
-    plt.clf()
-    plt.close('all')
-
-    # Switch to agg backend
-    plt.switch_backend('agg')
-
-    def setup_matplotlib_output():
-        def custom_show():
-            if plt.gcf().get_size_inches().prod() * plt.gcf().dpi ** 2 > 25_000_000:
-                print("Warning: Plot size too large, reducing quality")
-                plt.gcf().set_dpi(100)
-
-            png_buf = io.BytesIO()
-            plt.savefig(png_buf, format='png')
-            png_buf.seek(0)
-            png_base64 = base64.b64encode(png_buf.read()).decode('utf-8')
-            print(f'data:image/png;base64,{png_base64}')
-            png_buf.close()
-
-            plt.clf()
-            plt.close('all')
-
-        plt.show = custom_show
-  `,
   basic: `
     # Basic output capture setup
   `,
 };
 
 function detectRequiredHandlers(code: string): string[] {
-  const handlers: string[] = ['basic'];
+  return ['basic'];
+}
 
-  if (code.includes('matplotlib') || code.includes('plt.')) {
-    handlers.push('matplotlib');
-  }
-
-  return handlers;
+interface RunCodeButtonProps {
+  code: string;
+  consoleOutputs: Array<ConsoleOutput>;
+  setConsoleOutputs: Dispatch<SetStateAction<Array<ConsoleOutput>>>;
+  disabled?: boolean;
 }
 
 export function PureRunCodeButton({
+  code,
+  consoleOutputs,
   setConsoleOutputs,
-}: {
-  block: UIBlock;
-  setConsoleOutputs: Dispatch<SetStateAction<Array<ConsoleOutput>>>;
-}) {
+  disabled,
+}: RunCodeButtonProps) {
   const isPython = true;
   const [pyodide, setPyodide] = useState<any>(null);
-
-  const codeContent = useBlockSelector((state) => state.content);
-  const isBlockStreaming = useBlockSelector(
-    (state) => state.status === 'streaming',
-  );
 
   const loadAndRunPython = useCallback(async () => {
     const runId = generateUUID();
@@ -104,15 +69,13 @@ export function PureRunCodeButton({
         currentPyodideInstance.setStdout({
           batched: (output: string) => {
             stdOutputs.push({
-              type: output.startsWith('data:image/png;base64')
-                ? 'image'
-                : 'text',
+              type: 'text',
               value: output,
             });
           },
         });
 
-        await currentPyodideInstance.loadPackagesFromImports(codeContent, {
+        await currentPyodideInstance.loadPackagesFromImports(code, {
           messageCallback: (message: string) => {
             setConsoleOutputs((outputs) => [
               ...outputs.filter((output) => output.id !== runId),
@@ -125,22 +88,16 @@ export function PureRunCodeButton({
           },
         });
 
-        const requiredHandlers = detectRequiredHandlers(codeContent);
+        const requiredHandlers = detectRequiredHandlers(code);
         for (const handler of requiredHandlers) {
           if (OUTPUT_HANDLERS[handler as keyof typeof OUTPUT_HANDLERS]) {
             await currentPyodideInstance.runPythonAsync(
               OUTPUT_HANDLERS[handler as keyof typeof OUTPUT_HANDLERS],
             );
-
-            if (handler === 'matplotlib') {
-              await currentPyodideInstance.runPythonAsync(
-                'setup_matplotlib_output()',
-              );
-            }
           }
         }
 
-        await currentPyodideInstance.runPythonAsync(codeContent);
+        await currentPyodideInstance.runPythonAsync(code);
 
         setConsoleOutputs((outputs) => [
           ...outputs.filter((output) => output.id !== runId),
@@ -161,7 +118,7 @@ export function PureRunCodeButton({
         ]);
       }
     }
-  }, [pyodide, codeContent, isPython, setConsoleOutputs]);
+  }, [pyodide, code, isPython, setConsoleOutputs]);
 
   useEffect(() => {
     return () => {
@@ -170,14 +127,6 @@ export function PureRunCodeButton({
           pyodide.runPythonAsync(`
             import sys
             import gc
-
-            has_plt = 'matplotlib.pyplot' in sys.modules
-
-            if has_plt:
-                import matplotlib.pyplot as plt
-                plt.clf()
-                plt.close('all')
-
             gc.collect()
           `);
         } catch (error) {
@@ -196,7 +145,7 @@ export function PureRunCodeButton({
           loadAndRunPython();
         });
       }}
-      disabled={isBlockStreaming}
+      disabled={disabled}
     >
       <PlayIcon size={18} /> Run
     </Button>
@@ -204,7 +153,7 @@ export function PureRunCodeButton({
 }
 
 export const RunCodeButton = memo(PureRunCodeButton, (prevProps, nextProps) => {
-  if (prevProps.block.status !== nextProps.block.status) return false;
-
+  if (prevProps.code !== nextProps.code) return false;
+  if (prevProps.disabled !== nextProps.disabled) return false;
   return true;
 });
